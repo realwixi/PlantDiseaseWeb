@@ -1,0 +1,97 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Plant Disease Classifier</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; margin: 2rem; }
+    .card { max-width: 720px; margin: 0 auto; padding: 1rem; border: 1px solid #ddd; border-radius: 8px; }
+    .row { display: flex; gap: 1rem; align-items: flex-start; }
+    .col { flex: 1; }
+    img { max-width: 100%; height: auto; border-radius: 6px; }
+    pre { background: #f7f7f9; padding: 1rem; border-radius: 6px; overflow: auto; }
+    button { padding: 0.5rem 1rem; }
+    .muted { color: #666; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Plant Disease Classifier</h1>
+    <p class="muted">Image size: {{ image_size }} × {{ image_size }}. Select plant (grape, tomato, potato) then upload an image.</p>
+
+    <div class="row">
+      <div class="col">
+        <label for="plantSelect">Plant:</label>
+        <select id="plantSelect">
+          <option value="grape" selected>Grape</option>
+          <option value="tomato">Tomato</option>
+          <option value="potato">Potato</option>
+        </select>
+        <div style="margin-top: 0.75rem;"><input type="file" id="fileInput" accept="image/*" /></div>
+        <div style="margin-top: 1rem;">
+          <button id="predictBtn">Predict</button>
+        </div>
+        <div id="preview" style="margin-top: 1rem;"></div>
+      </div>
+      <div class="col">
+        <h3>Response</h3>
+        <pre id="response">No predictions yet.</pre>
+        <h3 style="margin-top:1rem;">AI Advice</h3>
+        <pre id="aiAdvice">No advice yet.</pre>
+        <h3 style="margin-top:1rem;">AI Advice (Tamil)</h3>
+        <pre id="aiAdviceTamil">No Tamil advice yet.</pre>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const plantSelect = document.getElementById('plantSelect');
+    const predictBtn = document.getElementById('predictBtn');
+    const responseEl = document.getElementById('response');
+    const previewEl = document.getElementById('preview');
+
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      previewEl.innerHTML = `<img src="${url}" alt="preview" />`;
+    });
+
+    predictBtn.addEventListener('click', async () => {
+      const file = fileInput.files[0];
+      if (!file) {
+        alert('Please select an image first.');
+        return;
+      }
+      const formData = new FormData();
+      formData.append('file', file, file.name);
+
+      responseEl.textContent = 'Predicting...';
+      try {
+        // Attach selected plant
+        const plant = plantSelect.value;
+        formData.append('plant', plant);
+        const res = await fetch('/predict', { method: 'POST', body: formData });
+        const json = await res.json();
+        
+        // Format response with class name highlighted
+        let display = JSON.stringify(json, null, 2);
+        if (json.top && json.top.class_name !== undefined && json.top.score !== undefined) {
+          const className = json.top.class_name;
+          const score = (json.top.score * 100).toFixed(2);
+          display = `\n✓ PREDICTION: ${className}\n  Confidence: ${score}%\n\nFull Response:\n${display}`;
+        }
+        responseEl.textContent = display;
+        const advice = json.ai && json.ai.advice ? json.ai.advice : (json.ai && json.ai.error ? `AI Error: ${json.ai.error}` : 'No advice');
+        document.getElementById('aiAdvice').textContent = advice;
+        const adviceTa = json.ai && json.ai.advice_tamil ? json.ai.advice_tamil : (json.ai && json.ai.translate_error ? `Translate Error: ${json.ai.translate_error}` : 'No Tamil advice');
+        document.getElementById('aiAdviceTamil').textContent = adviceTa;
+      } catch (err) {
+        responseEl.textContent = 'Error: ' + err;
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+flask
+pillow
+numpy
+requests
+python-dotenv
+googletrans==4.0.0rc1
+tensorflow-cpu
+# Install TensorFlow separately depending on your macOS architecture:
+# -  tensorflow-cpu
+# - Intel: tensorflow
